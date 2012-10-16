@@ -1,0 +1,6 @@
+div#output
+{
+    width: 200px;
+    height: 600px;
+    overflow: auto;
+}
