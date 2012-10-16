@@ -1,9 +1,10 @@
 function init() {
-    testWebSocket();
+//    testWebSocket();
+    testSocketIo();
 }
 
 function testWebSocket() {
-    var websocket = new WebSocket("ws://0.0.0.0:8080/socketio");
+    var websocket = new WebSocket("ws://0.0.0.0:8080/socket.io");
 
     websocket.onopen = function(evt) {
         console.log("open ", evt);
@@ -25,6 +26,10 @@ function testWebSocket() {
 
     websocket.onclose = function(evt) { console.log("close ", evt) };
     websocket.onerror = function(evt) { console.log("error ", evt) };
+}
+
+function testSocketIo() {
+    var socket = io.connect('http://0.0.0.0:8080', {transports: "websocket"});
 }
 
 function showMessage(message)

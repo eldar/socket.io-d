@@ -2,6 +2,7 @@
 html(lang="en")
     head
         title= "hello"
+        script(src="/public/socket.io.js")
         script(src="/public/socket.js")
         link(href="/public/style.css", rel="stylesheet")
 

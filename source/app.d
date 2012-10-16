@@ -2,20 +2,28 @@ import vibe.d;
 
 import socketio;
 
+import std.stdio;
+
 void handleRequest(HttpServerRequest req,
                    HttpServerResponse res)
 {
     res.render!("index.dt");
 }
 
+void logRequest(HttpServerRequest req, HttpServerResponse res)
+{
+    //writefln("url: %s", req.url);
+}
+
 static this()
 {
-    auto io = new SocketIo;
-
     auto router = new UrlRouter;
+    router.any("*", &logRequest);
+
+    auto io = new SocketIo(router);
+
     router
         .get("/public/*", serveStaticFiles("./public/", new HttpFileServerSettings("/public/")))
-        .get("/socketio", &io.handleRequest)
         .get("/", &handleRequest);
 
     io.onConnection( (socket) {

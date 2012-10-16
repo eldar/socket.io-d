@@ -2,11 +2,11 @@ module socketio;
 
 import vibe.core.core;
 import vibe.core.log;
+import vibe.core.signal;
 import vibe.data.json;
 import vibe.http.server;
 import vibe.http.websockets;
-import vibe.core.signal;
-
+import vibe.http.router;
 
 private bool isUndef(Json obj)
 {
@@ -75,11 +75,17 @@ class SocketIo
         Handler m_onConnect;
     }
 
-    this() {
+    this(UrlRouter router)
+    {
         m_signal = createSignal();
+        router.get("/socket.io/*", &this.handleRequest);
     }
 
     void handleRequest(HttpServerRequest req, HttpServerResponse res)
+    {
+    }
+
+    void handleConnectRequest(HttpServerRequest req, HttpServerResponse res)
     {
         auto callback = handleWebSockets( (socket) {
             auto ioSocket = new IoSocket(this, socket);
