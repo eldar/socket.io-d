@@ -8,6 +8,11 @@ import vibe.http.server;
 import vibe.http.websockets;
 import vibe.http.router;
 
+import util;
+
+import std.string;
+import std.stdio;
+
 private bool isUndef(Json obj)
 {
     return obj.type == Json.Type.Undefined;
@@ -78,11 +83,16 @@ class SocketIo
     this(UrlRouter router)
     {
         m_signal = createSignal();
-        router.get("/socket.io/*", &this.handleRequest);
+        router.get("/socket.io/1/", &this.handleRequest);
+        router.get("/socket.io/1/websocket/:sid", &this.handleConnectRequest);
     }
 
     void handleRequest(HttpServerRequest req, HttpServerResponse res)
     {
+        writefln("query: %s", req.query);
+        string data = [generateId(), "60", "60", "websocket"].join(":");
+        res.statusCode = HttpStatus.OK;
+        res.writeBody(data, "text/plain;");
     }
 
     void handleConnectRequest(HttpServerRequest req, HttpServerResponse res)
@@ -92,6 +102,9 @@ class SocketIo
             ioSockets[ioSocket] = true;
 
             m_signal.acquire();
+            
+            // indicate to the client that we connected
+            socket.send(cast(ubyte[])"1::");
 
             if(m_onConnect !is null)
                 m_onConnect(ioSocket);
@@ -101,6 +114,7 @@ class SocketIo
                 if( socket.dataAvailableForRead() )
                 {
                     auto str = cast(string) socket.receive();
+                    writefln("websocket message: %s", str);
                     foreach(dg; ioSocket.m_onMessage)
                         dg(Json(str));
                 }

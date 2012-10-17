@@ -1272,7 +1272,7 @@ var io = ('undefined' === typeof module ? {} : module.exports);
    */
 
   Transport.prototype.heartbeats = function () {
-    return true;
+    return false;
   }
 
   /**

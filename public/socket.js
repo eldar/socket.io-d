@@ -29,7 +29,13 @@ function testWebSocket() {
 }
 
 function testSocketIo() {
-    var socket = io.connect('http://0.0.0.0:8080', {transports: "websocket"});
+    var socket = io.connect('http://0.0.0.0:8080');
+    socket.on('connect', function () {
+        console.log("connected!");
+    });
+    socket.on('disconnect', function () {
+        console.log("disconnected!");
+    });
 }
 
 function showMessage(message)

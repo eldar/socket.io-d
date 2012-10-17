@@ -12,7 +12,7 @@ void handleRequest(HttpServerRequest req,
 
 void logRequest(HttpServerRequest req, HttpServerResponse res)
 {
-    //writefln("url: %s", req.url);
+    writefln("url: %s", req.url);
 }
 
 static this()
