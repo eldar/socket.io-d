@@ -32,6 +32,10 @@ function testSocketIo() {
     var socket = io.connect('http://0.0.0.0:8080');
     socket.on('connect', function () {
         console.log("connected!");
+        socket.emit("news", {"type": "hello"});
+    });
+    socket.on("serverevent", function(data) {
+        console.log(data);
     });
     socket.on('disconnect', function () {
         console.log("disconnected!");

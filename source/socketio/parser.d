@@ -1,4 +1,4 @@
-module parser;
+module socketio.parser;
 
 import vibe.vibe;
 

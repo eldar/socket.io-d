@@ -1,6 +1,6 @@
 import vibe.d;
 
-import socketio;
+import socketio.socketio;
 
 import std.stdio;
 
@@ -17,19 +17,20 @@ void logRequest(HttpServerRequest req, HttpServerResponse res)
 
 static this()
 {
+    auto io = new SocketIo();
+
     auto router = new UrlRouter;
-    router.any("*", &logRequest);
-
-    auto io = new SocketIo(router);
-
     router
+        .any("*", &logRequest)
+        .any("*", &io.handleRequest)
         .get("/public/*", serveStaticFiles("./public/", new HttpFileServerSettings("/public/")))
         .get("/", &handleRequest);
 
     io.onConnection( (socket) {
 
-        socket.onMessage( (data) {
-            socket.broadcast(data);
+        socket.on("news", (Json data) {
+            writefln("got news: %s", data);
+            socket.emit("serverevent", serializeToJson(["hello" : "stuff"]));
         });
     });
 

@@ -1,4 +1,4 @@
-module util;
+module socketio.util;
 
 import
     std.exception,
