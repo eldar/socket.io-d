@@ -1,11 +1,11 @@
 {
-    "name": "my-project",
+    "name": "socket.io",
     "version": "0.0.1",
-    "description": "An example project skeleton",
+    "description": "Socket.Io implementation for vibe.d",
     "homepage": "http://example.org",
     "copyright": "Copyright © 2000, Edit Me",
     "authors": [
-        "Your Name"
+        "Eldar Insafutdinov"
     ],
     "dependencies": {
     }
