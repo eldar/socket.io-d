@@ -115,6 +115,11 @@ private:
 
         if(id !in m_connected)
         {
+            ioSocket.on("disconnect", () {
+                m_connected.remove(id);
+                m_sockets.remove(id);
+                ioSocket.cleanup();
+            });
             // indicate to the client that we connected
             ioSocket.schedule(Message(MessageType.connect));
             m_connected[id] = true;

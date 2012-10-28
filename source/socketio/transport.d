@@ -13,16 +13,11 @@ import
 
 import core.time;
 
-class IoSocket
+class EventObject
 {
     alias void delegate(Json[] data) Handler;
     alias void delegate(Json data) HandlerSingle;
-    alias void delegate(string data) HandlerString;
-
-    @property string id()
-    {
-        return m_id;
-    }
+    alias void delegate() HandlerEmpty;
 
     void on(string name, Handler dg)
     {
@@ -32,6 +27,38 @@ class IoSocket
     void on(string name, HandlerSingle dg)
     {
         m_singleHandlers[name] ~= dg;
+    }
+
+    void on(string name, HandlerEmpty dg)
+    {
+        m_emptyHandlers[name] ~= dg;
+    }
+
+protected:
+    void emitEvent(string name, Json[] args)
+    {
+        foreach(dg; m_handlers.get(name, []))
+            dg(args);
+        foreach(dg; m_emptyHandlers.get(name, []))
+            dg();
+        if(args.length >= 1)
+            foreach(dg; m_singleHandlers.get(name, []))
+                dg(args[0]);
+    }
+
+private:
+    Handler[][string] m_handlers;
+    HandlerSingle[][string] m_singleHandlers;
+    HandlerEmpty[][string] m_emptyHandlers;
+}
+
+class IoSocket : EventObject
+{
+    alias void delegate(string data) HandlerString;
+
+    @property string id()
+    {
+        return m_id;
     }
 
     void emit(string name, Json[] args...)
@@ -57,12 +84,10 @@ package:
     HandlerSingle[] m_onJson;
     HandlerString[] m_onMessage;
     Timer m_heartbeatTimer;
+    Timer m_closeTimer;
     
     ubyte[] m_toSend;
     bool m_hasData = false;
-
-    Handler[][string] m_handlers;
-    HandlerSingle[][string] m_singleHandlers;
 
     this(SocketIo manager, string id_, Transport transport)
     {
@@ -72,6 +97,7 @@ package:
         m_transport.m_socket = this;
         m_signal = createSignal();
         m_heartbeatTimer = getEventDriver().createTimer(&this.heartbeat);
+        m_closeTimer = getEventDriver().createTimer(&this.onClose);
     }
 
     @property auto params()
@@ -82,11 +108,27 @@ package:
     void cleanup()
     {
         m_signal.release();
+        m_closeTimer.stop();
     }
 
     void heartbeat()
     {
         send(Message(MessageType.heartbeat));
+    }
+
+    void setCloseTimeout()
+    {
+        m_closeTimer.rearm(dur!"seconds"(params.closeTimeout));
+    }
+
+    void clearCloseTimeout()
+    {
+        m_closeTimer.stop();
+    }
+
+    void onClose()
+    {
+        emitEvent("disconnect", []);
     }
 
     void flush()
@@ -139,11 +181,7 @@ package:
                     dg(msg.args[0]);
                 break;
             case MessageType.event:
-                foreach(dg; m_handlers.get(msg.name, []))
-                    dg(msg.args);
-                if(msg.args.length >= 1)
-                    foreach(dg; m_singleHandlers.get(msg.name, []))
-                        dg(msg.args[0]);
+                emitEvent(msg.name, msg.args);
                 break;
             default:
         }
@@ -201,6 +239,8 @@ class XHRPollingTransport : Transport
 
     override void onRequest(HttpServerRequest req, HttpServerResponse res)
     {
+        m_socket.clearCloseTimeout();
+
         if(req.method == HttpMethod.POST)
         {
             auto data = req.bodyReader.readAll();
@@ -237,5 +277,11 @@ class XHRPollingTransport : Transport
     void onPollTimeout()
     {
         m_socket.send(Message(MessageType.noop));
+        onClose();
+    }
+
+    void onClose()
+    {
+        m_socket.setCloseTimeout();
     }
 }

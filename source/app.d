@@ -18,6 +18,9 @@ void logRequest(HttpServerRequest req, HttpServerResponse res)
 static this()
 {
     auto io = new SocketIo();
+    //io.parameters.transports = ["xhr-polling"];
+    //io.parameters.pollingDuration = 10;
+    //io.parameters.closeTimeout = 20;
 
     auto router = new UrlRouter;
     router
@@ -32,6 +35,10 @@ static this()
         socket.on("news", (Json data) {
             writefln("got news: %s", data);
             socket.broadcast_emit("news", data);
+        });
+
+        socket.on("disconnect", () {
+            writefln("client %s disconnected", socket.id);
         });
     });
 
