@@ -24,7 +24,6 @@ class SocketIo
     alias void delegate(IoSocket socket) Handler;
 
     package {
-        Signal m_signal;
         IoSocket[string] m_sockets;
         bool[string] m_connected;
         Handler m_onConnect;
@@ -35,7 +34,6 @@ class SocketIo
     {
         m_params = new Parameters;
         urlRe = regex("^\\/([^\\/]+)\\/?([^\\/]+)?\\/?([^\\/]+)?\\/?$");
-        m_signal = createSignal();
     }
 
     final @property Parameters parameters()
@@ -126,14 +124,11 @@ private:
         }
 
         m_sockets[id] = ioSocket;
-
-        m_signal.acquire();
-        
+     
         ioSocket.setHeartbeatTimeout();
 
         ioSocket.m_transport.onRequest(req, res);
 
-        m_signal.release();
         ioSocket.cleanup();
     }
 }
