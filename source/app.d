@@ -27,10 +27,11 @@ static this()
         .get("/", &handleRequest);
 
     io.onConnection( (socket) {
+        writefln("connected client: %s", socket.id);
 
         socket.on("news", (Json data) {
             writefln("got news: %s", data);
-            socket.emit("serverevent", serializeToJson(["hello" : "stuff"]));
+            socket.broadcast_emit("news", data);
         });
     });
 

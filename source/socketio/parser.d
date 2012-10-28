@@ -5,8 +5,6 @@ import vibe.vibe;
 import std.regex;
 import std.conv;
 
-import std.stdio;
-
 
 enum MessageType
 {
@@ -35,8 +33,6 @@ auto decodePacket(string packet)
     auto m = match(packet, re);
     auto type = m.captures[1];
     auto data = m.captures[5];
-    writeln(m.captures);
-    writefln("type %s message %s", cast(MessageType)to!int(type), data);
     auto msg = Message(cast(MessageType)to!int(type));
     switch(msg.type)
     {

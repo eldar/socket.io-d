@@ -7,18 +7,22 @@ import vibe.http.server;
 import vibe.http.websockets;
 
 import
+    socketio.parameters,
     socketio.socketio,
     socketio.parser;
 
 import core.time;
-
-import std.stdio;
 
 class IoSocket
 {
     alias void delegate(Json[] data) Handler;
     alias void delegate(Json data) HandlerSingle;
     alias void delegate(string data) HandlerString;
+
+    @property string id()
+    {
+        return m_id;
+    }
 
     void on(string name, Handler dg)
     {
@@ -38,35 +42,41 @@ class IoSocket
     void broadcast_emit(string name, Json[] args...)
     {
         auto data = Message(MessageType.event, name, args);
-        foreach(ios, _; m_manager.m_ioSockets)
+        foreach(_, ios; m_manager.m_sockets)
         {
             if(ios !is this)
-                ios.schedule(data);
+                ios.send(data);
         }
-        m_manager.m_signal.emit();
     }
 
 package:
     SocketIo m_manager;
     Transport m_transport;
+    string m_id;
     Signal m_signal;
-    Json m_data;
     HandlerSingle[] m_onJson;
     HandlerString[] m_onMessage;
     Timer m_heartbeatTimer;
-    ubyte[][] m_sendQueue;
+    
+    ubyte[] m_toSend;
+    bool m_hasData = false;
 
     Handler[][string] m_handlers;
     HandlerSingle[][string] m_singleHandlers;
 
-    this(SocketIo manager, Transport transport)
+    this(SocketIo manager, string id_, Transport transport)
     {
         m_manager = manager;
+        m_id = id_;
         m_transport = transport;
         m_transport.m_socket = this;
         m_signal = createSignal();
-        m_signal.acquire();
         m_heartbeatTimer = getEventDriver().createTimer(&this.heartbeat);
+    }
+
+    @property auto params()
+    {
+        return m_manager.m_params;
     }
 
     void cleanup()
@@ -76,26 +86,25 @@ package:
 
     void heartbeat()
     {
-        writeln("heartbeat");
         send(Message(MessageType.heartbeat));
     }
 
     void flush()
     {
-        foreach(data; m_sendQueue)
+        if(m_hasData)
         {
-            writefln("sending to client: %s", cast(string)data);
-            m_transport.send(data);
+            m_transport.send(m_toSend);
+            m_hasData = false;
+            m_toSend = null;
         }
-        m_sendQueue = [];
     }
 
     void send(Message msg)
     {
-        send(cast(ubyte[])encodePacket(msg));
+        sendData(cast(ubyte[])encodePacket(msg));
     }
 
-    void send(ubyte[] data)
+    void sendData(ubyte[] data)
     {
         schedule(data);
         m_signal.emit();
@@ -103,7 +112,8 @@ package:
 
     void schedule(ubyte[] data)
     {
-        m_sendQueue ~= data;
+        m_toSend = data;
+        m_hasData = true;
     }
 
     void schedule(Message msg)
@@ -113,12 +123,11 @@ package:
 
     void setHeartbeatTimeout()
     {
-        m_heartbeatTimer.rearm(dur!"seconds"(25));
+        m_heartbeatTimer.rearm(dur!"seconds"(params.heartbeatInterval));
     }
 
     void onData(string data)
     {
-        writefln("websocket message: %s", data);
         auto msg = decodePacket(data);
         switch(msg.type)
         {
@@ -145,15 +154,10 @@ abstract class Transport
 {
     IoSocket m_socket;
 
-    void onConnect()
-    {
+    final @property Signal signal() { return m_socket.m_signal; }
 
-    }
-
-    void send(ubyte[] data)
-    {
-
-    }
+    abstract void onRequest(HttpServerRequest req, HttpServerResponse res);
+    abstract void send(ubyte[] data);
 }
 
 class WebSocketTransport : Transport
@@ -165,8 +169,9 @@ class WebSocketTransport : Transport
         m_websocket = ws;
     }
 
-    override void onConnect()
+    override void onRequest(HttpServerRequest req, HttpServerResponse res)
     {
+        signal.acquire();
         while(m_websocket.connected)
         {
             if(m_websocket.dataAvailableForRead())
@@ -186,5 +191,51 @@ class WebSocketTransport : Transport
 
 class XHRPollingTransport : Transport
 {
+    Timer m_pollTimeout;
     HttpServerResponse m_response;
+
+    this()
+    {
+        m_pollTimeout = getEventDriver().createTimer(&onPollTimeout);
+    }
+
+    override void onRequest(HttpServerRequest req, HttpServerResponse res)
+    {
+        if(req.method == HttpMethod.POST)
+        {
+            auto data = req.bodyReader.readAll();
+            m_socket.onData(cast(string)data);
+            res.statusCode = HttpStatus.OK;
+            res.writeBody("1");
+        }
+        else if(req.method == HttpMethod.GET)
+        {
+            m_response = res;
+            if(m_socket.m_hasData)
+            {
+                m_socket.flush();
+            }
+            else
+            {
+                signal.acquire();
+                m_pollTimeout.rearm(dur!"seconds"(m_socket.params.pollingDuration));
+                rawYield();
+
+                m_socket.flush();
+                signal.release();
+            }
+        }
+    }
+
+    override void send(ubyte[] data)
+    {
+        auto res = m_response;
+        res.statusCode = HttpStatus.OK;
+        res.writeBody(data, "text/plain; charset=UTF-8");
+    }
+
+    void onPollTimeout()
+    {
+        m_socket.send(Message(MessageType.noop));
+    }
 }

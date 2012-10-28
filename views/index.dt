@@ -3,7 +3,7 @@ html(lang="en")
     head
         title= "hello"
         script(src="/public/socket.io.js")
-        script(src="/public/socket.js")
+        script(src="/public/app.js")
         link(href="/public/style.css", rel="stylesheet")
 
     body
