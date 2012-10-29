@@ -261,6 +261,8 @@ class XHRPollingTransport : Transport
                 m_pollTimeout.rearm(dur!"seconds"(m_socket.params.pollingDuration));
                 rawYield();
 
+                onClose();
+
                 m_socket.flush();
                 signal.release();
             }
@@ -277,6 +279,8 @@ class XHRPollingTransport : Transport
     void onPollTimeout()
     {
         m_socket.send(Message(MessageType.noop));
+        // have to call it from here as well, because if connection is
+        // closed we don't get to the onRequest handler
         onClose();
     }
 
