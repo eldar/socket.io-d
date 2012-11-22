@@ -1,5 +1,5 @@
 function init() {
-    var socket = io.connect('http://0.0.0.0:8080');
+    var socket = io.connect();
     socket.on('connect', function () {
         console.log("connected!");
         document.getElementById("send").onclick = function() {
