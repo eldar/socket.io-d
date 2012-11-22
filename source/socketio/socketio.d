@@ -6,6 +6,9 @@ import vibe.http.server;
 import vibe.http.websockets;
 import vibe.http.router;
 
+public import
+    socketio.transport: IoSocket;
+
 import
     socketio.parameters,
     socketio.transport,
