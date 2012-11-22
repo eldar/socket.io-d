@@ -34,7 +34,6 @@ class EventObject
         m_emptyHandlers[name] ~= dg;
     }
 
-protected:
     void emitEvent(string name, Json[] args)
     {
         foreach(dg; m_handlers.get(name, []))
@@ -219,6 +218,7 @@ class WebSocketTransport : Transport
             
             rawYield();
         }
+        m_socket.onClose();
     }
 
     override void send(ubyte[] data)
